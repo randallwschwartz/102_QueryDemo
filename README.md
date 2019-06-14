@@ -1,4 +1,4 @@
-# 102_Query
+# 102_QueryDemo
 
 This application pulls data from the USAC Open Data Online Platform: https://opendata.usac.org/.
 
