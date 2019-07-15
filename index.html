@@ -18,6 +18,11 @@
   <script type="text/javascript" src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/g/filesaver.js"></script>
 
+  <!-- stuff for date picker -->
+  <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script> -->
+  <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script> -->
+  <!-- <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" /> -->
+
 </head>
 
 <body>
@@ -40,6 +45,15 @@
           </div>  
             <br>
 
+          <!-- Certified Date Range -->
+          <div class="panel-heading">
+            <h3 class="panel-title"><strong>Certified Date Range</strong></h3>
+          </div>
+          <div class="panel-body">
+            <input type="text" name="daterange" value="07/02/2019 - 07/08/2019" />
+          </div>  
+            <br>
+            
           <!-- Billed Entity Name -->
           <!-- <div class="panel-heading">
             <h3 class="panel-title"><strong>Billed Entity Name</strong></h3>
@@ -98,6 +112,7 @@
       <table class="table table-bordered table-responsive">
         <thead>
           <tr>
+            <th scope="col">Find Prior 471s</th>
             <th scope="col">470 App. No.</th>
             <th scope="col">Applicant Name</th>
             <th scope="col">Billed Entity Number</th>
@@ -107,22 +122,50 @@
             <th scope="col">App. Street City</th>
             <th scope="col">App. Street State</th>
             <th scope="col">App. Street Zip</th>
-            <th scope="col">Allowable Contract Date</th>
+            <th scope="col">Certified Date/Time</th>
             <th scope="col">Funding Year</th>
             <th scope="col">Contract Expiration Date</th>
             <th scope="col">Category One Descr.</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="one">
           <!-- Insert rows here -->
         </tbody>
       </table>
+
+      <div class="container">
+        <table class="table table-bordered table-responsive">
+          <thead>
+            <tr>
+              <th scope="col">471 App. No.</th>
+              <th scope="col">Organization Name</th>
+              <th scope="col">Billed Entity Number</th>
+              <th scope="col">Application Type</th>
+              <th scope="col">App. Street Address 1</th>
+              <th scope="col">App. Street Address 2</th>
+              <th scope="col">App. Street City</th>
+              <th scope="col">App. Street State</th>
+              <th scope="col">App. Street Zip</th>
+              <th scope="col">Certified Date/Time</th>
+              <th scope="col">Funding Year</th>
+              <th scope="col">Chosen Category of Service</th>
+              <th scope="col">471 Form Link</th>
+            </tr>
+          </thead>
+          <tbody class="two">
+            <!-- Insert rows here -->
+          </tbody>
+        </table>
+      </div>
+  
+
     </div>
       
     <script type="text/javascript">
 
       var fundingYear = "";
       var billedEntityName = "";
+      var billedEntityNumber = "";
       var applicant_type = "";
 
       var schoolCheck = false;
@@ -131,6 +174,9 @@
       var k12Check = false;
       var libraryCheck = false;
 
+      var startDate = "";
+      var endDate = "";
+      
       function checkSettings(){
         if ($("#schoolCheck").prop("checked")){
           schoolCheck = true;
@@ -151,8 +197,6 @@
         if ($("#libraryCheck").prop("checked")){
           libraryCheck = true;
         }
-
-
       }
 
       var xlsRows = [["470 App. No.", "Applicant Name", "Billed Entity Number", "Application Type", "App. Street Address 1", "App. Street Address 2", "App. Street City", "App. Street State", "App. Street Zip"]];
@@ -160,7 +204,8 @@
       // usacSearchOne function 
       function usacSearchOne(fundingYear, billedEntityName) {
 
-        // var queryURL = "https://opendata.usac.org/resource/jp7a-89nd.json?contact_state=KS&funding_year=2018";
+        // var queryURL = "https://opendata.usac.org/resource/jp7a-89nd.json?billed_entity_state=ND&";
+        // var queryURL = "https://opendata.usac.org/resource/jp7a-89nd.json?certified_datetime=06/28/2019&";
         var queryURL = "https://opendata.usac.org/resource/jp7a-89nd.json?";
 
         // var fundingYear = "funding_year=2019";
@@ -170,17 +215,21 @@
           url: queryURL + fundingYear,
           type: "GET",
           data: {
-            "$limit" : 50,
+            "$where" : "certified_datetime between '2019-07-02T00:00:00' and '2019-07-12T00:00:00'",
+            // "$where" : "certified_datetime between '" + startDate + "' and '" + endDate + "'",
+            "$limit" : 200,
             "$$app_token" : "GTLTjpiTWvdsB8cIMPXNzlm65"
           }
         }).done(function(data) {
           alert("Retrieved " + data.length + " records from the dataset!");
-          console.log(queryURL + fundingYear + "&" + billedEntityName);
+          console.log("certified_datetime between " + startDate + " and " + endDate);
+          console.log(queryURL + fundingYear);
           console.log("Raw data: ");
           console.log(data);
 
-          var tbody = $("tbody");
+          var tbody = $("tbody.one");
           var row = "";
+          var td00 = "";
           var td01 = "";
           var td02 = "";
           var td03 = "";
@@ -195,6 +244,7 @@
           var td12 = "";
           var td13 = "";
 
+          var d00 = "";
           var d01 = "";
           var d02 = "";
           var d03 = "";
@@ -210,11 +260,25 @@
           var d13 = "";
 
           var states = ["AK", "AR", "AZ", "CO", "CA", "HI", "IL", "IN", "KS", "MO", "MT", "NV", "OH", "OK", "TX", "WI", "WY"];
+          // var states = ["AK", "AR", "AZ", "CO", "CA", "HI", "IL", "IN", "KS", "MO", "MT", "NV", "OH", "OK", "TX", "WI", "WY"];
+
           var remove = "";
 
+          // <button type="submit" class="btn btn-primary btn-md" id="search-btn"><span class="fa fa-search"></span> Conduct Search & Output </button>
+
+          // ----------------------------------------------------------------------------
           // for loop to append rows of data
+          // ----------------------------------------------------------------------------
           for (var i = 0; i < data.length; i++) {
-            td01 = $("<td>").text(data[i].application_number);
+            // td00 = $("<td>").attr({'type': 'button'}).addClass("btn btn-primary btn-sm").val(data[i].ben);
+            td00 = $("<td>").attr({
+              'type': 'button',
+              'id': data[i].ben,
+              'click': function() {alert('BEN: ' + data[i].ben);}
+              }).addClass("btn btn-primary btn-sm").val(data[i].ben);
+
+            // td01 = $("<td>").text(data[i].application_number);
+            td01 = $("<td>").html('<a href="' + data[i].f470_number + '">' + data[i].application_number + '</a>');
             td02 = $("<td>").text(data[i].billed_entity_name);
             td03 = $("<td>").text(data[i].ben);
             td04 = $("<td>").text(data[i].applicant_type);
@@ -223,7 +287,7 @@
             td07 = $("<td>").text(data[i].billed_entity_city);
             td08 = $("<td>").text(data[i].billed_entity_state);
             td09 = $("<td>").text(data[i].billed_entity_zip);
-            td10 = $("<td>").text(data[i].allowable_contract_date);
+            td10 = $("<td>").text(data[i].certified_datetime);
             td11 = $("<td>").text(data[i].funding_year);
             td12 = $("<td>").text(data[i].contract_exp_date);
             td13 = $("<td>").text(data[i].category_one_description);
@@ -237,7 +301,7 @@
             d07 = data[i].billed_entity_city;
             d08 = data[i].billed_entity_state;
             d09 = data[i].billed_entity_zip;
-            d10 = data[i].allowable_contract_date;
+            d10 = data[i].certified_datetime;
             d11 = data[i].funding_year;
             d12 = data[i].contract_exp_date;
             d13 = data[i].category_one_description;
@@ -308,10 +372,16 @@
             }
             // --------------------------------
 
+
+            // ----------------------------------------------------------------------------
+            // if-else statement to append rows to table
+            // ----------------------------------------------------------------------------
             if (remove){
               // console.log("removed row");
             } else {
+              // console.log("appending row");
               tbody.append(row);
+              row.append(td00);
               row.append(td01);
               row.append(td02);
               row.append(td03);
@@ -328,6 +398,9 @@
 
               xlsRows.push([d01, d02, d03, d04, d05, d06, d07, d08, d09, d10, d11, d12, d13]);
             }
+            // ----------------------------------------------------------------------------
+
+
 
           }
 
@@ -369,6 +442,222 @@
 
       }
 
+// USAC query search two - to get 471s associated with a particular billed entity number
+      function usacSearchTwo(fundingYear, billedEntityNumber) {
+
+        // var queryURL = "https://opendata.usac.org/resource/9s6i-myen.json?org_state=ND&";
+        var queryURL = "https://opendata.usac.org/resource/9s6i-myen.json?";
+
+
+        $.ajax({
+          url: queryURL + billedEntityNumber,
+          type: "GET",
+          data: {
+            "$limit" : 200,
+            "$$app_token" : "GTLTjpiTWvdsB8cIMPXNzlm65"
+          }
+        }).done(function(data) {
+          alert("Retrieved " + data.length + " records from the dataset!");
+          console.log(queryURL + fundingYear);
+          console.log("Raw data: ");
+          console.log(data);
+
+          var tbody = $("tbody.two");
+          var row = "";
+          var td01 = "";
+          var td02 = "";
+          var td03 = "";
+          var td04 = "";
+          var td05 = "";
+          var td06 = "";
+          var td07 = "";
+          var td08 = "";
+          var td09 = "";
+          var td10 = "";
+          var td11 = "";
+          var td12 = "";
+          var td13 = "";
+
+          var d01 = "";
+          var d02 = "";
+          var d03 = "";
+          var d04 = "";
+          var d05 = "";
+          var d06 = "";
+          var d07 = "";
+          var d08 = "";
+          var d09 = "";
+          var d10 = "";
+          var d11 = "";
+          var d12 = "";
+          var d13 = "";
+
+          var states = ["AK", "AR", "AZ", "CO", "CA", "HI", "IL", "IN", "KS", "MO", "MT", "NV", "OH", "OK", "TX", "WI", "WY"];
+          var remove = "";
+
+          // for loop to append rows of data
+          for (var i = 0; i < data.length; i++) {
+            // td01 = $("<td>").text(data[i].application_number);
+            td01 = $("<td>").html('<a href="' + data[i].file_url + '">' + data[i].application_number + '</a>')
+            td02 = $("<td>").text(data[i].organization_name);
+            td03 = $("<td>").text(data[i].epc_organization_id);
+            td04 = $("<td>").text(data[i].organization_entity_type_name);
+            td05 = $("<td>").text(data[i].org_address1);
+            td06 = $("<td>").text(data[i].org_address2);
+            td07 = $("<td>").text(data[i].org_city);
+            td08 = $("<td>").text(data[i].org_state);
+            td09 = $("<td>").text(data[i].org_zipcode);
+            td10 = $("<td>").text(data[i].certified_datetime);
+            td11 = $("<td>").text(data[i].funding_year);
+            td12 = $("<td>").text(data[i].chosen_category_of_service);
+            // td13 = $("<td>").text(data[i].file_url);
+            td13 = $("<td>").html('<a href="' + data[i].file_url + '">Link</a>');
+
+            d01 = data[i].application_number;
+            d02 = data[i].organization_name;
+            d03 = data[i].epc_organization_id;
+            d04 = data[i].organization_entity_type_name;
+            d05 = data[i].org_address1;
+            d06 = data[i].org_address2;
+            d07 = data[i].org_city;
+            d08 = data[i].org_state;
+            d09 = data[i].org_zipcode;
+            d10 = data[i].certified_datetime;
+            d11 = data[i].funding_year;
+            d12 = data[i].chosen_category_of_service;
+            d13 = data[i].file_url;
+            // d13 = '<a href="' + data[i].file_url + '">Link</a>';
+
+            row = $("<tr>");
+
+            applicant_type = $.trim(data[i].organization_entity_type_name);
+
+            applicant_type = applicant_type.replace(/\s+/g, "").toLowerCase();
+
+
+            console.log("applicant_type: " + applicant_type);
+            remove = false;
+
+            // // --------------------------------
+            // // Filter States: for loop to filter out a row of data with a state not available
+            // // --------------------------------
+            // for (j = 0; j < states.length; j++) {
+            //   if (data[i].org_state===states[j]){
+            //     remove = true;
+            //     console.log("Removed State Row");
+            //   }
+            // }
+            // // --------------------------------
+
+
+            // // --------------------------------
+            // // Filter Out Unchecked Applicant Attributes (School, District, Consortium, K-12, Libraries)
+            // // --------------------------------
+
+            // // -- this works for manually filtering a row with applicant_type of Library
+            // // remove = applicant_type.startsWith("Library");
+
+            // if (!schoolCheck && applicant_type.endsWith("school")){
+            //   remove = applicant_type.endsWith("school");
+            //   console.log("Removed School Row");
+            // }
+
+            // if (!districtCheck && applicant_type.endsWith("district")){
+            //   remove = applicant_type.endsWith("district");
+            //   console.log("Removed District Row");
+            // }
+
+            // if (!consortiumCheck && applicant_type.startsWith("consortium")){
+            //   remove = applicant_type.startsWith("consortium");
+            //   console.log("Removed Consortium Row");
+            // }
+
+            // if (!k12Check && applicant_type.startsWith("k-12")){
+            //   remove = applicant_type.startsWith("k-12");
+            //   console.log("Removed K-12 Row");
+            // }
+
+            // if (!libraryCheck && applicant_type.startsWith("library")){
+            //   remove = applicant_type.startsWith("library");
+            //   console.log("Removed Library Row");
+            // }
+
+            // // --------------------------------
+
+
+
+            // --------------------------------
+            // Filter Billed Entity Name: for loop to filter out a row of data that does not include term in BEN
+            // --------------------------------
+            if (data[i].organization_name===billedEntityName){
+              remove = true;
+            }
+            // --------------------------------
+
+            if (remove){
+              // console.log("removed row");
+            } else {
+              tbody.append(row);
+              row.append(td01);
+              row.append(td02);
+              row.append(td03);
+              row.append(td04);
+              row.append(td05);
+              row.append(td06);
+              row.append(td07);
+              row.append(td08);
+              row.append(td09);
+              row.append(td10);
+              row.append(td11);
+              row.append(td12);
+              row.append(td13);
+
+              xlsRows.push([d01, d02, d03, d04, d05, d06, d07, d08, d09, d10, d11, d12, d13]);
+            }
+
+          }
+
+          console.log("xlsRows: ");
+          console.log(xlsRows);
+
+
+          // // ----------------
+          // // export data in tbody to xlsx file
+          // // ----------------
+
+          // if ($("#spreadsheetCheck").prop("checked")){
+
+          //   // make the worksheet
+          //   var ws = XLSX.utils.json_to_sheet(xlsRows);
+
+          //   // add to the workbook
+          //   var wb = XLSX.utils.book_new();;
+          //   XLSX.utils.book_append_sheet(wb, ws, "Data");
+
+          //   /* write workbook (use type 'binary') */
+          //   var wbout = XLSX.write(wb, {bookType:'xlsx', type:'binary'});
+
+          //   /* generate a download */
+          //   function s2ab(s) {
+          //     var buf = new ArrayBuffer(s.length);
+          //     var view = new Uint8Array(buf);
+          //     for (var i=0; i!=s.length; ++i) view[i] = s.charCodeAt(i) & 0xFF;
+          //     return buf;
+          //   }
+
+          //   saveAs(new Blob([s2ab(wbout)],{type:"application/octet-stream"}), "sheetjs.xlsx");
+
+          // }
+
+          // ----------------
+
+        });
+
+      }
+
+      // ----------------------------------------------------------------------------
+      // display 470s when click on the search button
+      // ----------------------------------------------------------------------------
       $("#search-btn").on("click", function() {
         fundingYear = $("#funding-year").val().trim();
         // billedEntityName = $("#billed-entity-name").val().trim();
@@ -387,8 +676,52 @@
         usacSearchOne(fundingYear, billedEntityName);
 
       });
+      // ----------------------------------------------------------------------------
+
+      // ----------------------------------------------------------------------------
+      // display prior 471s when click on the search button
+      // ----------------------------------------------------------------------------
+      $("tbody").on("click", "button[class=btn-sm]", function() {
+        alert($(this).attr("value"));
+        // billedEntityNumber = $(".btn-sm").val();
+        billedEntityNumber = 139261;
+
+        // Using a RegEx Pattern to remove spaces from searchedCharacter
+        // You can read more about RegEx Patterns later https://www.regexbuddy.com/regex.html
+        billedEntityNumber = billedEntityNumber.replace(/\s+/g, "").toLowerCase();
+
+        billedEntityNumber = "epc_organization_id=" + billedEntityNumber;
+        console.log(billedEntityNumber);
+
+        usacSearchTwo(fundingYear, billedEntityNumber);
+
+      });
+      // ----------------------------------------------------------------------------
 
 
+
+      // // ----------------------------------------------------------------------------
+      // // function to get dates selected from date input box using daterangepicker.com
+      // // ----------------------------------------------------------------------------
+      // $(function() {
+      //   $('input[name="daterange"]').daterangepicker({
+      //     opens: 'left'
+      //   }, function(start, end, label) {
+      //     console.log("A new date selection was made: " + start.format('YYYY-MM-DD') + ' to ' + end.format('YYYY-MM-DD'));
+      //     startDate = start.format('YYYY-MM-DD') + 'T00:00:00';
+      //     endDate = end.format('YYYY-MM-DD') + 'T00:00:00';
+      //     console.log("startDate = " + startDate);
+      //     console.log("endDate = " + endDate);
+      //     console.log("certified_datetime between " + startDate + " and " + endDate);
+      //   });
+      // });
+      // // ----------------------------------------------------------------------------
+
+
+
+// -------------------------------------------
+//  prior version of search function with more fields
+// -------------------------------------------
       // function usacSearchOne() {
 
       //   // var queryURL = "https://opendata.usac.org/resource/jp7a-89nd.json?contact_state=KS&funding_year=2018";
